@@ -25,6 +25,8 @@ public class BodySourceView : MonoBehaviour
 	private GameObject curMesh;
 	private GameObject prevMesh;
 
+	private Color meshColor;
+
     private Dictionary<Kinect.JointType, Kinect.JointType> _BoneMap = new Dictionary<Kinect.JointType, Kinect.JointType>()
     {
         { Kinect.JointType.FootLeft, Kinect.JointType.AnkleLeft },
@@ -279,22 +281,24 @@ public class BodySourceView : MonoBehaviour
 		Vector3 HandCoordinates = new Vector3 (0,0,0);
 		// Change Cursor Type 
 
-		if (Input.GetMouseButton (0)) { // 0
-			//When Right Clicked 
+		if (Input.GetMouseButton (0)) { //When Right Clicked 
+
 			Debug.Log ("Right : Mouse Down Called");
 			HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
 			Debug.Log ("Pressed right Click At: " + HandCoordinates);
 			CreateMesh (HandCoordinates);
-		}if (Input.GetMouseButton (1)) { // 1
-			//When Left Clicked
+
+		}if (Input.GetMouseButton (1)) { //When Left Clicked
+
 			HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipLeft]);
 			CreateMesh (HandCoordinates);
+			//grab current meshes and rotate around it 
 
 		}if (Input.GetMouseButton (2)) {
 
 			if(curMesh != null)
 			{
-				//Transform root_transform =
+
 				GameObject root = curMesh.transform.root.gameObject;
 				Rigidbody rootRigidBody = root.AddComponent<Rigidbody>();
 				rootRigidBody.mass = 5;
@@ -304,6 +308,21 @@ public class BodySourceView : MonoBehaviour
 			}
 
 		}
+
+		if (Input.GetAxis ("Mouse ScrollWheel")!=0.0) {
+
+			var d = Input.GetAxis("Mouse ScrollWheel");
+			//change colors
+			if(d > 0f)//scrol up 
+			{
+				Debug.Log ("Mouse Scroll Up");
+			}
+			else if (d <0f)// scroll down
+			{
+				Debug.Log ("Mouse Scroll Down");
+			}
+		}
+
 		return HandCoordinates;
 	}
 
@@ -312,7 +331,8 @@ public class BodySourceView : MonoBehaviour
 
 		curMesh = GameObject.CreatePrimitive (PrimitiveType.Sphere);
 
-		curMesh.GetComponent<Renderer> ().material.color = Color.black;
+		meshColor = Color.black;
+		curMesh.GetComponent<Renderer> ().material.color = meshColor;
 		//Add position
 		curMesh.transform.position = coordinates;
 		curMesh.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
