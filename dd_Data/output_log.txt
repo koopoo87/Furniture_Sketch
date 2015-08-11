@@ -1,0 +1,26 @@
+Initialize engine version: 5.1.1f1 (2046fc06d4d8)
+[VRDevice] Successfully created device oculus.
+GfxDevice: creating device client; threaded=1
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.0]
+    Renderer: NVIDIA GeForce GTX 980 (ID=0x13c0)
+    Vendor:   NVIDIA
+    VRAM:     3072 MB
+Begin MonoManager ReloadAssembly
+Platform assembly: C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.dll (this message is harmless)
+Loading C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.dll into Unity Child Domain
+Platform assembly: C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\Assembly-CSharp-firstpass.dll (this message is harmless)
+Loading C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\Assembly-CSharp-firstpass.dll into Unity Child Domain
+Platform assembly: C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\Assembly-CSharp.dll (this message is harmless)
+Loading C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
+Platform assembly: C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.UI.dll (this message is harmless)
+Loading C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
+Platform assembly: C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
+Loading C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
+Platform assembly: C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.Analytics.dll (this message is harmless)
+Loading C:\Users\KustomizAR\Desktop\Minjoo\KustomizAR\Furniture_Sketch\dd_Data\Managed\UnityEngine.Analytics.dll into Unity Child Domain
+- Completed reload, in  0.063 seconds
+desktop: 2560x1440 59Hz; virtual: 2560x1440 at 0,0
+<RI> Initializing input.
+XInput1_3.dll not found. Trying XInput9_1_0.dll instead...
+<RI> Input initialized.
