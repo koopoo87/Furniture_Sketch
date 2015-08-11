@@ -24,8 +24,10 @@ public class BodySourceView : MonoBehaviour
     private BodySourceManager _BodyManager;
 	private GameObject curMesh;
 	private GameObject prevMesh;
-
-	private Color meshColor;
+	private Color[] ColorMap;
+	private int colorIndex;
+	private GameObject drawingMesh;
+	//private Color meshColor;
 
     private Dictionary<Kinect.JointType, Kinect.JointType> _BoneMap = new Dictionary<Kinect.JointType, Kinect.JointType>()
     {
@@ -64,6 +66,27 @@ public class BodySourceView : MonoBehaviour
 		//grab_offset = Vector3.zero;
 		activeObject = null;
 		CurrentBody = null;
+		//ColorMap = new Color[]{Color.black, Color.white, Color.blue, Color.cyan, Color.gray, Color.green, Color.magenta, Color.red, Color.yellow};
+		//Color Map for Furniture
+		ColorMap = new Color[]{
+			Color.black,
+			new Color32 (96, 60, 61, 255),
+			new Color32 (196, 175, 163, 255),
+			new Color32 (228, 206, 160, 255),
+			new Color32 (209, 164, 119, 255),
+			new Color32 (200, 121, 87, 255),
+			new Color32 (199, 196, 82, 255),
+			new Color32 (196, 196, 196, 255),
+			new Color32 (178, 191, 203, 255),
+			new Color32 (115, 126, 136, 255),
+			new Color32 (42, 70, 66, 255),
+			new Color32 (196, 179, 199, 255),
+			new Color32 (175, 138, 177, 255),
+			new Color32 (224, 224, 224, 255),
+			new Color32 (84, 168, 181, 255),
+			new Color32 (90, 124, 155, 255)
+		};
+		colorIndex = 0;
 		//meshNum = 0;
 	}
 
@@ -136,10 +159,6 @@ public class BodySourceView : MonoBehaviour
 				//Debug.Log("Null Body");
                 continue;
 			}
-            
-
-			//main_camera.transform.position = new Vector3 (0, 0.92f, -4.26f);
-
             if(body.IsTracked)
             {
 
@@ -155,10 +174,6 @@ public class BodySourceView : MonoBehaviour
 					if(!_Bodies.ContainsKey(body.TrackingId))
 					{
 						_Bodies[body.TrackingId] = CreateBodyObject (body.TrackingId);
-						//change coordinates
-						//_Bodies[body.TrackingId] = changePerspective(_Bodies[body.TrackingId]);
-						//_Bodies[body.TrackingId].transform.localScale = new Vector3(-1,1,-1);
-						//StartGrabbing(CurrentBody);
 					}
 
 				}
@@ -185,11 +200,10 @@ public class BodySourceView : MonoBehaviour
 				GameObject jointObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 
 				// Set color and Transparency 
-				Color color = jointObj.GetComponent<Renderer>().material.color;
-				color = Color.cyan;
-				color.a = -0.1f;
-				jointObj.GetComponent<Renderer>().material.color = color; 
-
+				//Color color = jointObj.GetComponent<Renderer>().material.color;
+				//color = Color.cyan;
+				jointObj.GetComponent<Renderer>().material.color = ColorMap[colorIndex]; 
+				drawingMesh = jointObj;
 				//mesh collider also created 
 				LineRenderer lr = jointObj.AddComponent<LineRenderer>();
 				lr.SetVertexCount(2);
@@ -203,11 +217,13 @@ public class BodySourceView : MonoBehaviour
 			else if(jt == Kinect.JointType.Head)
 			{
 				GameObject jointObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+
 				//mesh collider also created 
 				LineRenderer lr = jointObj.AddComponent<LineRenderer>();
 
 				/*Camera Transform */
 				main_camera.transform.parent = jointObj.transform ;
+				//jointObj.transform.parent = main_camera.transform ;
 				main_camera.transform.localScale = new Vector3 (1, 1, 1);
 
 
@@ -215,7 +231,10 @@ public class BodySourceView : MonoBehaviour
 				lr.SetVertexCount(2);
 				lr.material = BoneMaterial;
 				lr.SetWidth(0.02f, 0.02f);
-				jointObj.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
+
+				//jointObj.transform.localScale = new Vector3(0.005f, 0.005f, 0.005f);
+				jointObj.GetComponent<MeshRenderer>().enabled = false;
+				//jointObj.
 				jointObj.name = jt.ToString();
 				jointObj.transform.parent = body.transform;
 			}
@@ -237,6 +256,7 @@ public class BodySourceView : MonoBehaviour
         return body;
     }
     
+
 	/** Body : Draw Line **/
     private void RefreshBodyObject(Kinect.Body body, GameObject bodyObject)
     {
@@ -283,9 +303,9 @@ public class BodySourceView : MonoBehaviour
 
 		if (Input.GetMouseButton (0)) { //When Right Clicked 
 
-			Debug.Log ("Right : Mouse Down Called");
+			//Debug.Log ("Right : Mouse Down Called");
 			HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
-			Debug.Log ("Pressed right Click At: " + HandCoordinates);
+			//Debug.Log ("Pressed right Click At: " + HandCoordinates);
 			CreateMesh (HandCoordinates);
 
 		}if (Input.GetMouseButton (1)) { //When Left Clicked
@@ -316,11 +336,24 @@ public class BodySourceView : MonoBehaviour
 			if(d > 0f)//scrol up 
 			{
 				Debug.Log ("Mouse Scroll Up");
+				if(colorIndex == (ColorMap.Length-1))
+					colorIndex = 0;
+
+				colorIndex ++;
+				Color color = ColorMap[colorIndex];
+				drawingMesh.GetComponent<Renderer>().material.color = color; 
 			}
 			else if (d <0f)// scroll down
 			{
 				Debug.Log ("Mouse Scroll Down");
+				if(colorIndex == -1)
+					colorIndex = ColorMap.Length-1;
+			
+				colorIndex--;
+				Color color = ColorMap[colorIndex];
+				drawingMesh.GetComponent<Renderer>().material.color = color; 
 			}
+
 		}
 
 		return HandCoordinates;
@@ -329,10 +362,13 @@ public class BodySourceView : MonoBehaviour
 	private void CreateMesh(Vector3 coordinates)
 	{
 
-		curMesh = GameObject.CreatePrimitive (PrimitiveType.Sphere);
+		curMesh = GameObject.CreatePrimitive (PrimitiveType.Cube);
 
-		meshColor = Color.black;
-		curMesh.GetComponent<Renderer> ().material.color = meshColor;
+		//meshColor = Color.black;
+		Debug.Log ("Drawing Index : "+ colorIndex);
+		//curMesh.GetComponent<MeshRenderer> ().material.color = ColorMap[colorIndex];
+		curMesh.GetComponent<Renderer> ().material.SetColor("_Color",ColorMap[colorIndex]);
+
 		//Add position
 		curMesh.transform.position = coordinates;
 		curMesh.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
