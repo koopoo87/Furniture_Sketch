@@ -20,22 +20,21 @@ public class ObjExporterScript
 	
 	public static string MeshToString(/*GameObject obj,*/ MeshFilter mf, Transform t) 
 	{	
-		Vector3 s 		= t.localScale;
+		//scale 
+		Vector3 s 		= t.localScale ; // to mm scale
 		Vector3 p 		= t.localPosition;
 		Quaternion r 	= t.localRotation;
 		
 		
 		int numVertices = 0;
-		/*Mesh m = obj.GetComponent<Mesh> ();
-		MeshRenderer mr = obj.GetComponent<MeshRenderer> ();*/
 		Mesh m = mf.sharedMesh;
 		if (!m)
 		{
 			return "####Error####";
 		}
-		//Material[] mats = mf.renderer.sharedMaterials;
-		Material[] mats = mf.GetComponent<MeshRenderer>().sharedMaterials;
-		//Material[] mats = mr.sharedMaterials;
+
+		Material[] mats = mf.GetComponent<MeshRenderer>().materials;
+
 		
 		StringBuilder sb = new StringBuilder();
 		
@@ -43,7 +42,7 @@ public class ObjExporterScript
 		{
 			Vector3 v = t.TransformPoint(vv);
 			numVertices++;
-			sb.Append(string.Format("v {0} {1} {2}\n",v.x,v.y,-v.z));
+			sb.Append(string.Format("v {0} {1} {2}\n",v.x*1000,v.y*1000,-v.z*1000)); //scale down to mm 
 		}
 		sb.Append("\n");
 		foreach(Vector3 nn in m.normals) 
@@ -52,10 +51,12 @@ public class ObjExporterScript
 			sb.Append(string.Format("vn {0} {1} {2}\n",-v.x,-v.y,v.z));
 		}
 		sb.Append("\n");
+
 		foreach(Vector3 v in m.uv) 
 		{
 			sb.Append(string.Format("vt {0} {1}\n",v.x,v.y));
 		}
+
 		for (int material=0; material < m.subMeshCount; material ++) 
 		{
 			sb.Append("\n");
@@ -141,7 +142,7 @@ public class ObjExporter : ScriptableObject
 		{
 			meshString.Append("g ").Append(t.name).Append("\n");
 		}
-		
+		Renderer mr = t.GetComponent<Renderer>();
 		MeshFilter mf = t.GetComponent<MeshFilter>();
 		if (mf)
 		{

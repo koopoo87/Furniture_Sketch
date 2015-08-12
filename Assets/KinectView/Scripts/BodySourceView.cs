@@ -6,10 +6,9 @@ using Kinect = Windows.Kinect;
 public class BodySourceView : MonoBehaviour 
 {
 	//to grab object
-	public float grabObjectDistance = 2.0f;
-	public LayerMask grabLayers = ~0;
+	public float grabObjectDistance = 0.01f;
+	//public LayerMask grabLayers = ~0;
 	protected Vector3 grab_offset;
-	public Collider activeObject; 
 
 	//Camera
 	//public Camera main_camera;
@@ -18,6 +17,8 @@ public class BodySourceView : MonoBehaviour
     public Material BoneMaterial;
     public GameObject BodySourceManager;
 	public Windows.Kinect.Body CurrentBody;
+
+
 	private bool IsFirstBody = true; 
 	private ulong IDToFirstBody;
 	private Dictionary<ulong, GameObject> _Bodies = new Dictionary<ulong, GameObject>(); //Dictionary to Tracking Bodies
@@ -25,8 +26,22 @@ public class BodySourceView : MonoBehaviour
 	private GameObject curMesh;
 	private GameObject prevMesh;
 	private Color[] ColorMap;
+	private static ArrayList inactivatedCol = new ArrayList();
 	private int colorIndex;
 	private GameObject drawingMesh;
+	private Collider closest;
+	private bool OnMove;
+	private bool IsReleased;
+
+	// need to make clean code.... 
+	private GameObject activeObject; 
+	private GameObject parentMesh;
+
+
+	private GameObject rootGravityReset;
+	private Vector3 rootPosition;
+	private Quaternion rootRotation;
+	//private GameObject 
 	//private Color meshColor;
 
     private Dictionary<Kinect.JointType, Kinect.JointType> _BoneMap = new Dictionary<Kinect.JointType, Kinect.JointType>()
@@ -64,8 +79,10 @@ public class BodySourceView : MonoBehaviour
     void Start(){
 
 		//grab_offset = Vector3.zero;
-		activeObject = null;
+		//activeObject = null;
+		OnMove = false;
 		CurrentBody = null;
+		IsReleased = true;
 		//ColorMap = new Color[]{Color.black, Color.white, Color.blue, Color.cyan, Color.gray, Color.green, Color.magenta, Color.red, Color.yellow};
 		//Color Map for Furniture
 		ColorMap = new Color[]{
@@ -87,6 +104,7 @@ public class BodySourceView : MonoBehaviour
 			new Color32 (90, 124, 155, 255)
 		};
 		colorIndex = 0;
+		closest = null;
 		//meshNum = 0;
 	}
 
@@ -179,7 +197,7 @@ public class BodySourceView : MonoBehaviour
 				}
 
                 RefreshBodyObject(body, _Bodies[body.TrackingId]);
-				getHandCoordinates(CurrentBody);
+				getHandCoordinates(CurrentBody, _Bodies[body.TrackingId]);
 
 			}
         }
@@ -222,6 +240,7 @@ public class BodySourceView : MonoBehaviour
 				LineRenderer lr = jointObj.AddComponent<LineRenderer>();
 
 				/*Camera Transform */
+				main_camera.transform.position = jointObj.transform.position;
 				main_camera.transform.parent = jointObj.transform ;
 				//jointObj.transform.parent = main_camera.transform ;
 				main_camera.transform.localScale = new Vector3 (1, 1, 1);
@@ -295,45 +314,104 @@ public class BodySourceView : MonoBehaviour
 
 
 	/* New Code (7/28 ) : Getting Hand Coordinate */
-	private Vector3 getHandCoordinates(Kinect.Body body){
+	private Vector3 getHandCoordinates(Kinect.Body body, GameObject bodyObject){
 
 
-		Vector3 HandCoordinates = new Vector3 (0,0,0);
+		Vector3 HandCoordinates =  GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
+
+		//new Vector3 (0,0,0);
 		// Change Cursor Type 
+		if(Input.GetMouseButtonDown(0)){
+
+
+
+			//Edit Again // 
+			parentMesh = HoverObject(HandCoordinates, bodyObject);
+			ColorSave(parentMesh ,Color.yellow);
+			Rigidbody parentRigidbody = parentMesh.GetComponent<Rigidbody>();
+
+		
+			
+			if( parentMesh != null&& parentRigidbody == null)
+			{
+
+
+				if(prevMesh == null){
+					Debug.Log ("No prev Mesh");
+
+				}
+				prevMesh.transform.parent = parentMesh.transform;
+				//ColorSave(parentMesh ,Color.yellow);
+				//parentMesh = null;
+			}
+		}
 
 		if (Input.GetMouseButton (0)) { //When Right Clicked 
 
-			//Debug.Log ("Right : Mouse Down Called");
+
 			HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
-			//Debug.Log ("Pressed right Click At: " + HandCoordinates);
-			CreateMesh (HandCoordinates);
-
-		}if (Input.GetMouseButton (1)) { //When Left Clicked
-
-			HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipLeft]);
-			CreateMesh (HandCoordinates);
-			//grab current meshes and rotate around it 
-
-		}if (Input.GetMouseButton (2)) {
-
-			if(curMesh != null)
-			{
-
-				GameObject root = curMesh.transform.root.gameObject;
-				Rigidbody rootRigidBody = root.AddComponent<Rigidbody>();
-				rootRigidBody.mass = 5;
-
-				//curMesh = null;
-				Destroy (curMesh);
-			}
+			CreateMesh (HandCoordinates, parentMesh);
 
 		}
 
-		if (Input.GetAxis ("Mouse ScrollWheel")!=0.0) {
+		if (Input.GetMouseButtonUp (0)) {
+
+			//GameObject parentMesh = HoverObject(HandCoordinates, bodyObject);
+			ColorRestore(parentMesh);
+			parentMesh = null;
+		}
+
+
+
+		if (Input.GetMouseButtonDown (1)) { //When Left Clicked 
+		
+			OnMove = !OnMove;
+			if(OnMove == true){
+
+				HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
+				//CreateMesh (HandCoordinates);
+				activeObject = GrabObject(HandCoordinates, bodyObject);
+			}
+
+			else if(OnMove == false){
+
+				HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
+				OnRelease(activeObject, HandCoordinates);
+			}
+		}
+		/*if (Input.GetMouseButtonUp (1)) {
+
+			HandCoordinates = GetVector3FromJoint (body.Joints [Kinect.JointType.HandTipRight]);
+			OnRelease(activeObject, HandCoordinates);
+		}*/
+
+
+
+		if (Input.GetMouseButtonDown (2)) { // When Clicked the middle button 
+
+			GameObject hoveredObject = HoverObject(HandCoordinates, bodyObject);
+			Rigidbody rigid = hoveredObject.GetComponent<Rigidbody>();
+
+			if(hoveredObject != null){
+
+				if(rigid == null){
+				    ApplyGravity(hoveredObject);
+
+				}else if(rigid != null){
+									
+					foreach(Renderer r in hoveredObject.GetComponentsInChildren<Renderer>()){
+						inactivatedCol.Add(r.material.color);
+					}
+					ResetGravity(hoveredObject);
+				}
+			}
+		}
+
+		if (Input.GetAxis ("Mouse ScrollWheel")!= 0.0) {
 
 			var d = Input.GetAxis("Mouse ScrollWheel");
 			//change colors
-			if(d > 0f)//scrol up 
+			if(d > 0f)//scroll up 
 			{
 				Debug.Log ("Mouse Scroll Up");
 				if(colorIndex == (ColorMap.Length-1))
@@ -346,27 +424,54 @@ public class BodySourceView : MonoBehaviour
 			else if (d <0f)// scroll down
 			{
 				Debug.Log ("Mouse Scroll Down");
-				if(colorIndex == -1)
-					colorIndex = ColorMap.Length-1;
+				if(colorIndex == 0)
+					colorIndex = ColorMap.Length;
+				
 			
 				colorIndex--;
 				Color color = ColorMap[colorIndex];
 				drawingMesh.GetComponent<Renderer>().material.color = color; 
 			}
 
+
+
 		}
 
 		return HandCoordinates;
 	}
 
-	private void CreateMesh(Vector3 coordinates)
+	
+	private GameObject ApplyGravity(GameObject hoveredObject){
+
+		//GameObject root = curMesh.transform.root.gameObject;
+		GameObject root = hoveredObject;
+		rootPosition = root.transform.position;
+		rootRotation = root.transform.rotation;
+		Rigidbody rigid = root.GetComponent<Rigidbody> ();
+		Rigidbody rootRigidBody = root.AddComponent<Rigidbody> ();
+		rootRigidBody.mass = 5;
+
+		//ColorRestore (root);
+		Destroy(curMesh);
+		
+		return root;
+
+	}
+
+
+	private void ResetGravity(GameObject root){
+
+		root.transform.position = rootPosition;
+		root.transform.rotation = rootRotation;
+		Destroy (root.GetComponent<Rigidbody>()); //--> Freeze 
+
+	}
+
+
+	private void CreateMesh(Vector3 coordinates, GameObject parentMesh)
 	{
 
-		curMesh = GameObject.CreatePrimitive (PrimitiveType.Cube);
-
-		//meshColor = Color.black;
-		Debug.Log ("Drawing Index : "+ colorIndex);
-		//curMesh.GetComponent<MeshRenderer> ().material.color = ColorMap[colorIndex];
+		curMesh = GameObject.CreatePrimitive (PrimitiveType.Sphere);
 		curMesh.GetComponent<Renderer> ().material.SetColor("_Color",ColorMap[colorIndex]);
 
 		//Add position
@@ -375,90 +480,156 @@ public class BodySourceView : MonoBehaviour
 
 		/* Make Children */ 
 		if (prevMesh != null) {
+
 			curMesh.transform.parent = prevMesh.transform.root;
+
+		} else if (prevMesh == null && parentMesh != null) {
+
+			curMesh.transform.parent = parentMesh.transform.root;
 		}
 
 		prevMesh = curMesh;
 	}
+
+
+	
+	//Color Save & Restore //
+
+
+	public static void ColorSave(GameObject root, Color col){
+
+		inactivatedCol.Clear();
+
+		foreach(Renderer r in root.GetComponentsInChildren<Renderer>()){
+			inactivatedCol.Add(r.material.color);
+			r.material.color = col;
+		}
+	}
+	
+	
+	public static void ColorRestore(GameObject root){
+		
+		int i = 0;
+		
+		foreach(Renderer r in root.GetComponentsInChildren<Renderer>()){
+			r.material.color = (Color) inactivatedCol[i]; //cast
+			i++;
+			//r.material.color = inactivatedCol;
+		}
+	}
+
 	
 	/* Start Grabbing Object - Added */
-	//Calculate Distance
-	private Collider GrabSearch(Vector3 leftHandCoordinate,Vector3 rightHandCoordinate ){
-		Vector3 grabPosition = (leftHandCoordinate + rightHandCoordinate) / 2.0f;
-		float closest_sqr_distance = grabObjectDistance * grabObjectDistance;
+	//Returns root of the Active Object 
+	private GameObject HoverObject(Vector3 handCoordinate, GameObject body){
 
-		Collider closest = null;
-		Collider[] close_things = Physics.OverlapSphere (grabPosition, grabObjectDistance, grabLayers);
+		float closest_sqr_distance = grabObjectDistance * grabObjectDistance;
+		Collider[] close_things = Physics.OverlapSphere (handCoordinate, grabObjectDistance);
+		GameObject activeObject; 
+		
+		
+		for (int j = 0; j< close_things.Length; ++j) {
+			
+			float sqr_distance = (handCoordinate-close_things[j].transform.position).sqrMagnitude;
+			//Debug.Log("j: "+ j+ " Sqr_distance : " + sqr_distance + "closest sqr distance: " + closest_sqr_distance);
+			
+			
+			if(close_things[j]==null)
+				Debug.Log("Close things == null");
+			
+			if(close_things[j]!=null && sqr_distance < closest_sqr_distance && !close_things[j].transform.IsChildOf(body.transform))
+			{
+				GameObject candidate = close_things[j].gameObject;
+				//Debug.Log("Close things finding");
+				
+				if(candidate != null){
+					closest = close_things[j];
+					closest_sqr_distance = sqr_distance;
+				}
+				
+			}
+		}
+		
+		if (closest != null) {
+			activeObject = closest.gameObject.transform.root.gameObject; 
+			closest = null;
+			return activeObject;
+		}else{
+
+			Debug.Log("No hovered Object");
+			activeObject = null;
+			closest = null;
+			return activeObject;
+		}
+
+	}
+	
+	private GameObject GrabObject(Vector3 handCoordinate, GameObject body){
+
+
+
+	    float closest_sqr_distance = grabObjectDistance * grabObjectDistance;
+		Collider[] close_things = Physics.OverlapSphere (handCoordinate, grabObjectDistance);
+
+
 
 		for (int j = 0; j< close_things.Length; ++j) {
 
-			float sqr_distance = (grabPosition-close_things[j].transform.position).sqrMagnitude;
-			//float grab_hand_distance = ( leftHandCoordinate - rightHandCoordinate ).sqrMagnitude; // detect certain amount of distance and regard as grabbed
-			Debug.Log("Searching closest objects");
-			if(close_things[j].GetComponent<Rigidbody>()!=null && sqr_distance < closest_sqr_distance &&  !close_things[j].transform.IsChildOf(transform) && close_things[j].tag != "NotGrabbable")
+			float sqr_distance = (handCoordinate-close_things[j].transform.position).sqrMagnitude;
+			Debug.Log("j: "+ j+ " Sqr_distance : " + sqr_distance + "closest sqr distance: " + closest_sqr_distance);
+
+
+			if(close_things[j]==null)
+				Debug.Log("Close things == null");
+
+			if(close_things[j]!=null && sqr_distance < closest_sqr_distance && !close_things[j].transform.IsChildOf(body.transform))
 			{
-				Holdable_object holdable = close_things[j].GetComponent<Holdable_object>();
+				GameObject candidate = close_things[j].gameObject;
 				Debug.Log("Holdable Object detected");
 
-				if(holdable == null || !holdable.IsGrabbed()){
+				if(candidate != null){
 					closest = close_things[j];
 					closest_sqr_distance = sqr_distance;
 				}
 
 			}
 		}
-		return closest;
-	}
-	
-	protected void StartGrabbing(Kinect.Body body){
-		Debug.Log ("Start Grabbing");
-		//Kinect.Joint sourceJoint = body.Joints [Kinect.JointType.HandLeft];
-		Vector3 leftHandCoordinate = GetVector3FromJoint (body.Joints [Kinect.JointType.HandLeft]);
-		Vector3 rightHandCoordinate = GetVector3FromJoint (body.Joints [Kinect.JointType.HandRight]);
-		Vector3 curGrabPosition = (leftHandCoordinate + rightHandCoordinate) / 2.0f;
 
+		if (closest != null && IsReleased == true) {
 
-		activeObject = GrabSearch(leftHandCoordinate, rightHandCoordinate);
-		//Debug.Log ("Grab Position: " + curGrabPosition);
+			//GameObject close_root = closest.transform.root.gameObject; // set Root 
+			GameObject activeObject = closest.gameObject.transform.root.gameObject; 
+			ColorSave(activeObject ,Color.red);
+			activeObject.transform.position = handCoordinate;
+			activeObject.transform.parent = body.transform.Find(Kinect.JointType.HandTipLeft.ToString());
 
-		if (activeObject == null) {
-			Debug.Log("No Active Object");
-			return;
-		}
-		Holdable_object holdable = activeObject.GetComponent<Holdable_object>();
-		grab_offset = Vector3.zero;
+			IsReleased = false;
+			closest = null;
+			return activeObject;
 
-		if(holdable == null){
-			Vector3 delta_position = activeObject.transform.position -curGrabPosition;
-			Ray grab_ray = new Ray (curGrabPosition, delta_position);
-			RaycastHit grab_hit;
+		} else {
 
-			if(activeObject.Raycast(grab_ray, out grab_hit, grabObjectDistance))
-				grab_offset = activeObject.transform.position - grab_hit.point;
-			else
-				grab_offset = activeObject.transform.position - curGrabPosition;
-		}
-		//wow... Quaternion
-
-		if (holdable != null) {
-			holdable.OnGrab();
+			Debug.Log("No Objects");
+			GameObject close_root = null;
+			closest = null;
+			return close_root;
 		}
 
 	}
 
-	protected void OnRelease(){
-		if (activeObject != null) {
-			Holdable_object hold = activeObject.GetComponent<Holdable_object>();
-			if(hold != null)
-				hold.OnRelease();
 
-			if(hold == null){
-				activeObject.GetComponent<Rigidbody>().maxAngularVelocity = Mathf.Infinity;
-			}
+	protected void OnRelease(GameObject active, Vector3 handCoordinate){
+			
+		if (active != null) {
+			Debug.Log ("Onrelease");
+			active.transform.parent = null;
+			ColorRestore(active);
+			active.transform.position = handCoordinate;
+			IsReleased = true;
 		}
 
-		activeObject = null;
-		StartGrabbing (CurrentBody);
+
+
 	}
 
 	/* New Code - Finished */
